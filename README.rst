@@ -70,21 +70,31 @@ Building from GIT
 
 Building PgBouncer from GIT requires that you fetch libusual submodule::
 	$ git clone https://github.com/wurenny/pgbouncer-x2.git
+	
 	$ cd pgbouncer
+	
 	$ git submodule init
+	
 	$ git submodule update
+	
 	$ ./autogen.sh
+	
 	$ mkdir build
+	
 	$ cd build
 	
 you can run configure generate the header and config files ::
-	$ ./configure ...
+	$ ../configure --prefix=somepath
+	
 	$ make
+	
 	$ make install
 	
 or also you can run cmake with out of source::
-	$ cmake ..
+	$ cmake -DCMAKE_INSTALL_PREFIX=somepath ..
+	
 	$ make
+	
 	$ make install
 
 Additional packages required: autoconf, automake, libtool,
