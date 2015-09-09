@@ -38,9 +38,9 @@
 #include <usual/strpool.h>
 
 #ifdef DBGVER
-#define FULLVER   PACKAGE_NAME " version " PACKAGE_VERSION " (" DBGVER ")"
+#define FULLVER   PACKAGE_NAME " version Based on pgbouncer " PACKAGE_VERSION " (" DBGVER ")"
 #else
-#define FULLVER   PACKAGE_NAME " version " PACKAGE_VERSION
+#define FULLVER   PACKAGE_NAME " version Based on pgbouncer " PACKAGE_VERSION
 #endif
 
 /* each state corresponds to a list */
@@ -84,6 +84,7 @@ typedef struct PgSocket PgSocket;
 typedef struct PgUser PgUser;
 typedef struct PgDatabase PgDatabase;
 typedef struct PgPool PgPool;
+typedef struct PgWeight PgWeight;
 typedef struct PgStats PgStats;
 typedef union PgAddr PgAddr;
 typedef enum SocketState SocketState;
@@ -283,6 +284,9 @@ struct PgDatabase {
 	struct List head;
 	char name[MAX_DBNAME];	/* db name for clients */
 
+	int sno;		/* sequence number to identify database if exists same name */ 
+	int weight;		/* weight ratio of same name connections (compute from config) */
+    
 	bool db_paused;		/* PAUSE <db>; was issued */
 	bool db_dead;		/* used on RELOAD/SIGHUP to later detect removed dbs */
 	bool db_auto;		/* is the database auto-created by autodb_connstr */
@@ -370,6 +374,16 @@ struct PgSocket {
 	VarCache vars;		/* state of interesting server parameters */
 
 	SBuf sbuf;		/* stream buffer, must be last */
+};
+
+/*
+ * statistics weight and connection group by database name
+ * to compute each database's weight
+ */
+struct PgWeight {
+	int total_db;
+	int total_weight;
+	int total_connection;
 };
 
 #define RAW_IOBUF_SIZE	offsetof(IOBuf, buf)

@@ -51,6 +51,11 @@ struct Slab *iobuf_cache;
 static STATLIST(justfree_client_list);
 static STATLIST(justfree_server_list);
 
+/*
+ * init global PgWeight
+ */
+static PgWeight pgweight;
+
 /* init autodb idle list */
 STATLIST(autodatabase_idle_list);
 
@@ -64,6 +69,27 @@ int get_active_client_count(void)
 int get_active_server_count(void)
 {
 	return slab_active_count(server_cache);
+}
+
+static PgWeight *get_server_weight_byname(const char *name)
+{
+	struct List *item;
+	PgDatabase *db;
+	pgweight.total_db = pgweight.total_weight = pgweight.total_connection = 0; 
+	statlist_for_each(item, &database_list) {
+		db = container_of(item, PgDatabase, head);
+		if (strcmp(db->name, name) == 0) {
+			pgweight.total_db ++;
+			pgweight.total_weight += db->weight;	
+			pgweight.total_connection += db->connection_count;
+		}
+	}
+	return &pgweight;
+}
+
+static bool db_weight_enough(PgWeight * pw, PgDatabase *db)
+{
+	return db->connection_count*pw->total_weight > pw->total_connection*db->weight;
 }
 
 static void construct_client(void *obj)
@@ -263,8 +289,11 @@ static int cmp_pool(struct List *i1, struct List *i2)
 {
 	PgPool *p1 = container_of(i1, PgPool, head);
 	PgPool *p2 = container_of(i2, PgPool, head);
-	if (p1->db != p2->db)
-		return strcmp(p1->db->name, p2->db->name);
+    int res;
+	if (p1->db != p2->db) {
+		res = strcmp(p1->db->name, p2->db->name);
+		return res ? res : p1->db->sno-p2->db->sno;
+    }
 	if (p1->user != p2->user)
 		return strcmp(p1->user->name, p2->user->name);
 	return 0;
@@ -281,9 +310,12 @@ static int cmp_user(struct List *i1, struct List *i2)
 /* compare db names, for use with put_in_order */
 static int cmp_database(struct List *i1, struct List *i2)
 {
+    int res; 
 	PgDatabase *db1 = container_of(i1, PgDatabase, head);
 	PgDatabase *db2 = container_of(i2, PgDatabase, head);
-	return strcmp(db1->name, db2->name);
+	res = strcmp(db1->name, db2->name);
+	printf("cmp database:%s,%s,%d,%d,%d\n", db1->name, db2->name, res, db1->sno, db2->sno);
+	return res ? res : db1->sno-db2->sno;
 }
 
 /* put elem into list in correct pos */
@@ -308,10 +340,11 @@ static void put_in_order(struct List *newitem, struct StatList *list,
 /* create new object if new, then return it */
 PgDatabase *add_database(const char *name)
 {
-	PgDatabase *db = find_database(name);
+	PgDatabase *db = find_maxsno_database(name);
+	int sno = db == NULL ? 0 : db->sno + 1;
 
 	/* create new object if needed */
-	if (db == NULL) {
+	/*if (db == NULL) {*/
 		db = slab_alloc(db_cache);
 		if (!db)
 			return NULL;
@@ -322,9 +355,10 @@ PgDatabase *add_database(const char *name)
 			slab_free(db_cache, db);
 			return NULL;
 		}
+		db->sno = sno;
 		aatree_init(&db->user_tree, user_node_cmp, user_node_release);
 		put_in_order(&db->head, &database_list, cmp_database);
-	}
+	/*}*/
 
 	return db;
 }
@@ -428,13 +462,38 @@ PgUser *force_user(PgDatabase *db, const char *name, const char *passwd)
 /* find an existing database */
 PgDatabase *find_database(const char *name)
 {
+	PgWeight *pw = get_server_weight_byname(name);
+	if (!pw->total_db) 
+		return NULL;
+
 	struct List *item, *tmp;
-	PgDatabase *db;
+	PgDatabase *db, *res = NULL;
+	int min_connection = cf_max_client_conn + 1;
+	int rsno = random() % pw->total_db;
+
 	statlist_for_each(item, &database_list) {
 		db = container_of(item, PgDatabase, head);
-		if (strcmp(db->name, name) == 0)
-			return db;
+		if (strcmp(db->name, name) == 0) {
+			if (db->weight < 0) {
+				/* default act: least conn*/
+				if (db->connection_count < min_connection) {
+					min_connection = db->connection_count; 
+					res = db;
+				}
+			} else if (db->weight > 0) {
+				/* weight least conn */
+				if (!db_weight_enough(pw, db))
+					return db;	
+			} else {
+				/* random conn */
+				if (db->sno == rsno)	
+					return db;
+			}
+		}
 	}
+	if (res)
+		return res;
+    
 	/* also trying to find in idle autodatabases list */
 	statlist_for_each_safe(item, &autodatabase_idle_list, tmp) {
 		db = container_of(item, PgDatabase, head);
@@ -446,6 +505,24 @@ PgDatabase *find_database(const char *name)
 		}
 	}
 	return NULL;
+}
+
+/* find an existing database with sno */
+PgDatabase *find_maxsno_database(const char *name)
+{
+	struct List *item;
+	PgDatabase *db, *res = NULL;
+	int curr_max_sno = -1;
+	statlist_for_each(item, &database_list) {
+		db = container_of(item, PgDatabase, head);
+		if (strcmp(db->name, name) == 0) {
+			if (db->sno > curr_max_sno) {
+				curr_max_sno = db->sno; 
+				res = db;
+			}
+		}
+	}
+	return res;
 }
 
 /* find existing user */

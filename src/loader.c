@@ -186,6 +186,7 @@ bool parse_database(void *base, const char *name, const char *connstr)
 	int max_db_connections = -1;
 	int dbname_ofs;
 	int pool_mode = POOL_INHERIT;
+	int weight = -1;
 
 	char *tmp_connstr;
 	const char *dbname = name;
@@ -230,6 +231,8 @@ bool parse_database(void *base, const char *name, const char *connstr)
 			host = val;
 		} else if (strcmp("port", key) == 0) {
 			port = val;
+		} else if (strcmp("weight", key) == 0) {
+			weight = atoi(val);	
 		} else if (strcmp("user", key) == 0) {
 			username = val;
 		} else if (strcmp("password", key) == 0) {
@@ -305,6 +308,8 @@ bool parse_database(void *base, const char *name, const char *connstr)
 			changed = true;
 		} else if (v_port != db->port) {
 			changed = true;
+		} else if (weight >= 0 && weight != db->weight) {
+				changed = true;
 		} else if (username && !db->forced_user) {
 			changed = true;
 		} else if (username && strcmp(username, db->forced_user->name) != 0) {
@@ -326,6 +331,7 @@ bool parse_database(void *base, const char *name, const char *connstr)
 	db->res_pool_size = res_pool_size;
 	db->pool_mode = pool_mode;
 	db->max_db_connections = max_db_connections;
+	db->weight = weight>=0 ? weight : -1;
 
 	if (db->host)
 		free(db->host);
