@@ -463,13 +463,13 @@ PgUser *force_user(PgDatabase *db, const char *name, const char *passwd)
 PgDatabase *find_database(const char *name)
 {
 	PgWeight *pw = get_server_weight_byname(name);
-	if (!pw->total_db) 
-		return NULL;
-
 	struct List *item, *tmp;
 	PgDatabase *db, *res = NULL;
 	int min_connection = cf_max_client_conn + 1;
 	int rsno = random() % pw->total_db;
+
+	if (!pw->total_db) 
+		return NULL;
 
 	statlist_for_each(item, &database_list) {
 		db = container_of(item, PgDatabase, head);
