@@ -79,16 +79,12 @@ Building PgBouncer from GIT requires that you fetch libusual submodule::
 	
 you can run configure generate the header and config files ::
 	$ ./configure ...
-	
 	$ make
-	
 	$ make install
 	
 or also you can run cmake with out of source::
 	$ cmake ..
-	
 	$ make
-	
 	$ make install
 
 Additional packages required: autoconf, automake, libtool,
