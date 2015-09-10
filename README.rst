@@ -1,14 +1,14 @@
 
-PgBouncer
+PgBouncer-X2
 =========
 
-Lightweight connection pooler for PostgreSQL.
+Lightweight load balancing connection pooler for PostgreSQL-X2.
 
-Homepage
-    https://pgbouncer.github.io
+Homepage, Sources, bugtracking
+    https://github.com/wurenny/pgbouncer-x2
 
-Sources, bugtracking
-    https://github.com/pgbouncer/pgbouncer
+Postgresql-X2
+    https://github.com/postgres-x2/postgres-x2
 
 Building
 ---------
@@ -68,17 +68,33 @@ turn off automatic probing and force use of either `evdns` or `getaddrinfo_a()`.
 Building from GIT
 -----------------
 
-Building PgBouncer from GIT requires that you fetch libusual
-submodule and generate the header and config files before
-you can run configure::
-
-	$ git clone https://github.com/pgbouncer/pgbouncer.git
+Building PgBouncer from GIT requires that you fetch libusual submodule::
+	$ git clone https://github.com/wurenny/pgbouncer-x2.git
+	
 	$ cd pgbouncer
+	
 	$ git submodule init
+	
 	$ git submodule update
+	
 	$ ./autogen.sh
-	$ ./configure ...
+	
+	$ mkdir build
+	
+	$ cd build
+	
+you can run configure generate the header and config files ::
+	$ ../configure --prefix=somepath
+	
 	$ make
+	
+	$ make install
+	
+or also you can run cmake with out of source::
+	$ cmake -DCMAKE_INSTALL_PREFIX=somepath ..
+	
+	$ make
+	
 	$ make install
 
 Additional packages required: autoconf, automake, libtool,
