@@ -1,5 +1,5 @@
 
-PgBouncer
+PgBouncer-X2
 =========
 
 Lightweight load balancing connection pooler for PostgreSQL-X2.
