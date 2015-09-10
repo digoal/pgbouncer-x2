@@ -314,7 +314,6 @@ static int cmp_database(struct List *i1, struct List *i2)
 	PgDatabase *db1 = container_of(i1, PgDatabase, head);
 	PgDatabase *db2 = container_of(i2, PgDatabase, head);
 	res = strcmp(db1->name, db2->name);
-	printf("cmp database:%s,%s,%d,%d,%d\n", db1->name, db2->name, res, db1->sno, db2->sno);
 	return res ? res : db1->sno-db2->sno;
 }
 
@@ -463,14 +462,14 @@ PgUser *force_user(PgDatabase *db, const char *name, const char *passwd)
 PgDatabase *find_database(const char *name)
 {
 	PgWeight *pw = get_server_weight_byname(name);
-	struct List *item, *tmp;
 	PgDatabase *db, *res = NULL;
-	int min_connection = cf_max_client_conn + 1;
-	int rsno = random() % pw->total_db;
+	struct List *item, *tmp;
+	int rsno, min_connection = cf_max_client_conn + 1;
 
 	if (!pw->total_db) 
 		return NULL;
 
+	rsno = random() % pw->total_db;
 	statlist_for_each(item, &database_list) {
 		db = container_of(item, PgDatabase, head);
 		if (strcmp(db->name, name) == 0) {
