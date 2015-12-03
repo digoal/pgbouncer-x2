@@ -192,6 +192,7 @@ bool parse_database(void *base, const char *name, const char *connstr)
 	const char *dbname = name;
 	char *host = NULL;
 	char *port = "5432";
+        char *options = "-c gp_session_role=utility";
 	char *username = NULL;
 	char *password = "";
 	char *auth_username = NULL;
@@ -231,6 +232,8 @@ bool parse_database(void *base, const char *name, const char *connstr)
 			host = val;
 		} else if (strcmp("port", key) == 0) {
 			port = val;
+                } else if (strcmp("options", key) == 0) {
+                        options = val;
 		} else if (strcmp("weight", key) == 0) {
 			weight = atoi(val);	
 		} else if (strcmp("user", key) == 0) {
@@ -374,6 +377,11 @@ bool parse_database(void *base, const char *name, const char *connstr)
 		pktbuf_put_string(msg, "application_name");
 		pktbuf_put_string(msg, appname);
 	}
+
+        if (options) {
+                pktbuf_put_string(msg, "options");
+                pktbuf_put_string(msg, options);
+        }
 
 	if (auth_username != NULL) {
 		db->auth_user = find_user(auth_username);
